@@ -1,0 +1,393 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+#define SIGNAL_PIN 15
+
+// =====================================================
+// PHONE HOTSPOT
+// =====================================================
+
+const char* ssid = "Your_wifi_name";
+const char* password = "your_wifi_password";
+
+WebServer server(80);
+
+// =====================================================
+// NEC TRANSMITTER
+// =====================================================
+
+void mark(uint16_t us) {
+digitalWrite(SIGNAL_PIN, LOW);
+delayMicroseconds(us);
+}
+
+void space(uint16_t us) {
+digitalWrite(SIGNAL_PIN, HIGH);
+delayMicroseconds(us);
+}
+
+void sendNEC(uint16_t address, uint8_t command) {
+
+uint32_t data =
+(uint32_t)address |
+((uint32_t)command << 16) |
+((uint32_t)(~command & 0xFF) << 24);
+
+// 9 ms header
+mark(9000);
+
+// 4.5 ms space
+space(4500);
+
+// 32 bits, LSB first
+for (int i = 0; i < 32; i++) {
+
+mark(560);  
+
+if (data & 0x01) {  
+  space(1690);  
+} else {  
+  space(560);  
+}  
+
+data >>= 1;
+
+}
+
+// Final mark
+mark(560);
+
+// Idle HIGH
+digitalWrite(SIGNAL_PIN, HIGH);
+}
+
+// =====================================================
+// SEND COMMAND
+// =====================================================
+
+void sendCommand(uint8_t command) {
+
+const uint16_t ADDRESS = 0xEF00;
+
+sendNEC(ADDRESS, command);
+
+delay(40);
+
+sendNEC(ADDRESS, command);
+}
+
+// =====================================================
+// WEB PAGE
+// =====================================================
+
+const char webpage[] PROGMEM = R"rawliteral(
+
+<!DOCTYPE html>  <html>  <head>  <meta name="viewport" content="width=device-width, initial-scale=1">  <title>ESP32 RGB Remote</title>  <style>  
+  
+body {  
+  background: #111;  
+  color: white;  
+  font-family: Arial;  
+  text-align: center;  
+  padding: 20px;  
+}  
+  
+h1 {  
+  margin-bottom: 25px;  
+}  
+  
+button {  
+  width: 140px;  
+  height: 60px;  
+  margin: 8px;  
+  border: none;  
+  border-radius: 12px;  
+  font-size: 18px;  
+  font-weight: bold;  
+}  
+  
+.off {  
+  background: black;  
+  color: white;  
+  border: 2px solid white;  
+}  
+  
+.power {  
+  background: #333;  
+  color: white;  
+}  
+  
+.red {  
+  background: red;  
+  color: white;  
+}  
+  
+.green {  
+  background: green;  
+  color: white;  
+}  
+  
+.blue {  
+  background: blue;  
+  color: white;  
+}  
+  
+.white {  
+  background: white;  
+  color: black;  
+}  
+  
+.orange {  
+  background: orange;  
+  color: black;  
+}  
+  
+.lightgreen {  
+  background: lightgreen;  
+  color: black;  
+}  
+  
+.lightblue {  
+  background: lightblue;  
+  color: black;  
+}  
+  
+.magenta {  
+  background: magenta;  
+  color: white;  
+}  
+  
+.fade {  
+  background: #7b68ee;  
+  color: white;  
+}  
+  
+.smooth {  
+  background: #20b2aa;  
+  color: white;  
+}  
+  
+</style>  </head>  <body>  <h1>🌈 ESP32 RGB REMOTE</h1>  <button class="off" onclick="location.href='/off'">  
+⚫ OFF  
+</button>  <button class="power" onclick="location.href='/power'">  
+⏻ POWER  
+</button>  <br>  <button class="red" onclick="location.href='/red'">  
+🔴 RED  
+</button>  <button class="green" onclick="location.href='/green'">  
+🟢 GREEN  
+</button>  <button class="blue" onclick="location.href='/blue'">  
+🔵 BLUE  
+</button>  <button class="white" onclick="location.href='/white'">  
+⚪ WHITE  
+</button>  <button class="orange" onclick="location.href='/orange'">  
+🟠 ORANGE  
+</button>  <button class="lightgreen" onclick="location.href='/lightgreen'">  
+🟩 LIGHT GREEN  
+</button>  <button class="lightblue" onclick="location.href='/lightblue'">  
+🩵 LIGHT BLUE  
+</button>  <button class="magenta" onclick="location.href='/magenta'">  
+🟣 MAGENTA  
+</button>  <button class="fade" onclick="location.href='/fade'">  
+🌈 FADE  
+</button>  <button class="smooth" onclick="location.href='/smooth'">  
+🌊 SMOOTH  
+</button>  </body>  </html>  
+)rawliteral";  // =====================================================
+// BUTTON HANDLERS
+// =====================================================
+
+void handleOff() {
+sendCommand(0x02);
+server.send(200, "text/plain", "OFF sent");
+}
+
+void handlePower() {
+sendCommand(0x03);
+server.send(200, "text/plain", "POWER sent");
+}
+
+void handleRed() {
+sendCommand(0x04);
+server.send(200, "text/plain", "RED sent");
+}
+
+void handleGreen() {
+sendCommand(0x05);
+server.send(200, "text/plain", "GREEN sent");
+}
+
+void handleBlue() {
+sendCommand(0x06);
+server.send(200, "text/plain", "BLUE sent");
+}
+
+void handleWhite() {
+sendCommand(0x07);
+server.send(200, "text/plain", "WHITE sent");
+}
+
+void handleOrange() {
+sendCommand(0x08);
+server.send(200, "text/plain", "ORANGE sent");
+}
+
+void handleLightGreen() {
+sendCommand(0x09);
+server.send(200, "text/plain", "LIGHT GREEN sent");
+}
+
+void handleLightBlue() {
+sendCommand(0x10);
+server.send(200, "text/plain", "LIGHT BLUE sent");
+}
+
+void handleMagenta() {
+sendCommand(0x16);
+server.send(200, "text/plain", "MAGENTA sent");
+}
+
+void handleFade() {
+sendCommand(0x13);
+server.send(200, "text/plain", "FADE sent");
+}
+
+void handleSmooth() {
+sendCommand(0x17);
+server.send(200, "text/plain", "SMOOTH sent");
+}
+
+// =====================================================
+// SETUP
+// =====================================================
+
+void setup() {
+
+Serial.begin(115200);
+
+// GPIO15 imitates IR receiver signal
+pinMode(SIGNAL_PIN, OUTPUT);
+
+// Idle state
+digitalWrite(SIGNAL_PIN, HIGH);
+
+// ===================================================
+// CONNECT TO PHONE HOTSPOT
+// ===================================================
+
+WiFi.mode(WIFI_STA);
+
+WiFi.disconnect(true);
+delay(1000);
+
+Serial.println();
+Serial.println("==============================");
+Serial.println("ESP32 RGB REMOTE");
+Serial.println("==============================");
+
+Serial.print("Connecting to hotspot: ");
+Serial.println(ssid);
+
+WiFi.begin(ssid, password);
+
+int attempts = 0;
+
+while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+
+delay(500);  
+
+Serial.print(".");  
+
+attempts++;
+
+}
+
+Serial.println();
+
+// ===================================================
+// WIFI RESULT
+// ===================================================
+
+if (WiFi.status() == WL_CONNECTED) {
+
+Serial.println("================================");  
+Serial.println("Wi-Fi CONNECTED!");  
+Serial.println("================================");  
+
+Serial.print("Hotspot: ");  
+Serial.println(ssid);  
+
+Serial.print("ESP32 IP: http://");  
+Serial.println(WiFi.localIP());  
+
+Serial.print("Signal strength: ");  
+Serial.print(WiFi.RSSI());  
+Serial.println(" dBm");
+
+} else {
+
+Serial.println("================================");  
+Serial.println("Wi-Fi CONNECTION FAILED!");  
+Serial.println("================================");  
+
+Serial.print("Wi-Fi status code: ");  
+Serial.println(WiFi.status());  
+
+Serial.println();  
+Serial.println("Check that:");  
+Serial.println("1. Hotspot 'Arnavvv' is ON");  
+Serial.println("2. Hotspot is 2.4 GHz");  
+Serial.println("3. Phone allows devices to connect");  
+Serial.println("4. ESP32 is close to the phone");
+
+}
+
+// ===================================================
+// WEB SERVER
+// ===================================================
+
+server.on("/",  {
+
+server.send_P(  
+  200,  
+  "text/html",  
+  webpage  
+);
+
+});
+
+// ===================================================
+// BUTTON ROUTES
+// ===================================================
+
+server.on("/off", handleOff);
+server.on("/power", handlePower);
+server.on("/red", handleRed);
+server.on("/green", handleGreen);
+server.on("/blue", handleBlue);
+server.on("/white", handleWhite);
+server.on("/orange", handleOrange);
+server.on("/lightgreen", handleLightGreen);
+server.on("/lightblue", handleLightBlue);
+server.on("/magenta", handleMagenta);
+server.on("/fade", handleFade);
+server.on("/smooth", handleSmooth);
+
+// ===================================================
+// START SERVER
+// ===================================================
+
+server.begin();
+
+Serial.println();
+Serial.println("Web server started!");
+}
+
+// =====================================================
+// LOOP
+// =====================================================
+
+void loop() {
+
+server.handleClient();
+
+}
