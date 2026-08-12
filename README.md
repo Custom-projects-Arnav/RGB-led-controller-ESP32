@@ -58,8 +58,8 @@ These libraries are included with the ESP32 Arduino environment.
 
 In the Arduino sketch, change:
 
-const char* ssid = "Arnavvv";
-const char* password = "";
+const char* ssid = "your_wifi_name";
+const char* password = password";
 
 Set "ssid" to your phone's hotspot name.
 
@@ -67,7 +67,7 @@ If your hotspot has a password:
 
 const char* password = "YOUR_PASSWORD";
 
-2. Upload the code
+2. Upload the code (download code)
 
 Connect the ESP32 to your computer using USB.
 
